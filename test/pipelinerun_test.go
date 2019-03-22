@@ -82,10 +82,10 @@ func TestPipelineRunWithRetry(t *testing.T) {
 		pipelineRunFunc: getSimplePipelineWithRetry,
 	}}
 
-	for i, td := range tds {
-		t.Run(td.name, func(t *testing.T) {
+	for i, tdd := range tds {
+		t.Run(tdd.name, func(t *testing.T) {
 
-			td := td
+			td := tdd
 			t.Parallel()
 			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
 			// this means that metrics emitted from these tests will have the wrong test name attached. We should
@@ -109,27 +109,6 @@ func TestPipelineRunWithRetry(t *testing.T) {
 			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, PipelineRunFinished(), "PipelineRunSuccess"); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
-			}
-
-			actualTaskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
-			if err != nil {
-				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
-			}
-
-			logger.Info("Waiting for retried Tasks to complete")
-			for _, actualTaskRunItem := range actualTaskrunList.Items {
-				taskRunName := actualTaskRunItem.Name
-				r, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
-				if err != nil {
-					t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
-				}
-
-				if err := WaitForTaskRunState(c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed"); err != nil {
-					t.Errorf("Error waiting for TaskRun %s to finish: %s", "createbuckettaskrun", err)
-				}
-				if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
-					t.Fatalf("Expected TaskRun %s to have failed but Status is %v", taskRunName, r.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
-				}
 			}
 
 			if td.expectedRetries > 0 {
