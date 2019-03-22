@@ -773,6 +773,13 @@ func (in *PipelineRunStatus) DeepCopyInto(out *PipelineRunStatus) {
 			}
 		}
 	}
+	if in.RetriesStatus != nil {
+		in, out := &in.RetriesStatus, &out.RetriesStatus
+		*out = make([]PipelineRunStatus, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -1425,6 +1432,13 @@ func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 	if in.Steps != nil {
 		in, out := &in.Steps, &out.Steps
 		*out = make([]StepState, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.RetriesStatus != nil {
+		in, out := &in.RetriesStatus, &out.RetriesStatus
+		*out = make([]TaskRunStatus, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

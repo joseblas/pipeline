@@ -94,6 +94,36 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 	}
 }
 
+func TestWaitForPipelineRunStateFinishedSuccess(t *testing.T) {
+	d := Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("bar", waitNamespace, tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(success),
+			)),
+		},
+	}
+	c := fakeClients(d)
+	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunFinished(), "TestWaitForPipelineRunSucceed")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWaitForPipelineRunStateFinishedFailure(t *testing.T) {
+	d := Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("bar", waitNamespace, tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(failure),
+			)),
+		},
+	}
+	c := fakeClients(d)
+	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunFinished(), "TestWaitForPipelineRunSucceed")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func fakeClients(d Data) *clients {
 	fakeClients, _ := SeedTestData(d)
 	// 	c.KubeClient = fakeClients.Kube

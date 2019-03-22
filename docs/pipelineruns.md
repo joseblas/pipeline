@@ -47,7 +47,7 @@ following fields:
     scheduled on that node. More info:
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>
   - [`affinity`] - The pod's scheduling constraints. More info:
-
+  - [`retries`] - Specifies how many retries to be done after a failure.
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>
 
 [kubernetes-overview]:

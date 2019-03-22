@@ -669,3 +669,80 @@ func TestReconcilePropagateLabels(t *testing.T) {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
 	}
 }
+
+func TestReconcileWithTimeoutAndRetry(t *testing.T) {
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-timeout", "foo",
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
+			tb.PipelineRunRetries(1),
+		),
+		tb.PipelineRunStatus(
+			tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),
+	)}
+
+	ts := []*v1alpha1.Task{
+		tb.Task("hello-world", "foo"),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(2)
+
+	testAssets := getPipelineRunController(d, fr)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-timeout")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+
+	reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// One retry stored
+	if len(reconciledRun.Status.RetriesStatus) != 1 {
+		t.Error("PipelineRunStatus retries should be 1")
+	}
+
+	if reconciledRun.Status.StartTime != nil {
+		t.Error("StartTime should be nil after retry")
+	}
+
+	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Reason == resources.ReasonTimedOut {
+		t.Errorf("Expected PipelineRun to be ok, but condition reason is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+
+	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status != corev1.ConditionUnknown {
+		t.Errorf("Expected condition is 'Unknown' but is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status)
+	}
+	// The PipelineRun should be timed out within the RetriesStatus
+	if reconciledRun.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Reason != resources.ReasonTimedOut {
+		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	if actual == nil {
+		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+	}
+
+	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
+	if actual.Spec.Timeout.Duration > prs[0].Spec.Timeout.Duration {
+		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeout.Duration.String())
+	}
+
+}

@@ -202,3 +202,13 @@ func PipelineRunFailed(name string) PipelineRunStateFn {
 		return false, nil
 	}
 }
+
+func PipelineRunFinished() PipelineRunStateFn {
+	return func(pr *v1alpha1.PipelineRun) (bool, error) {
+		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			return true, nil
+		}
+		return false, nil
+	}
+}

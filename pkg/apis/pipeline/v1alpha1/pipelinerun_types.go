@@ -63,6 +63,9 @@ type PipelineRunSpec struct {
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Number of retries
+	// +optional
+	Retries int `json:"retries,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
@@ -124,6 +127,9 @@ type PipelineRunStatus struct {
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
+	// Failed Status History
+	// +optional
+	RetriesStatus []PipelineRunStatus `json:"retriesStatus,omitempty"`
 }
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status

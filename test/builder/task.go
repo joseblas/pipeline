@@ -291,6 +291,12 @@ func Condition(condition duckv1alpha1.Condition) TaskRunStatusOp {
 	}
 }
 
+func Retry(retry v1alpha1.TaskRunStatus) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.RetriesStatus = append(s.RetriesStatus, retry)
+	}
+}
+
 // StepState adds a StepState to the TaskRunStatus.
 func StepState(ops ...StepStateOp) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
@@ -313,6 +319,12 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.Timeout = &metav1.Duration{Duration: d}
+	}
+}
+
+func TaskRunRetries(retries int) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Retries = retries
 	}
 }
 
