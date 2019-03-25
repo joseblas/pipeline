@@ -226,7 +226,7 @@ func TestTaskRunTimeoutAndRetry(t *testing.T) {
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, logger, c, namespace)
+	defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,

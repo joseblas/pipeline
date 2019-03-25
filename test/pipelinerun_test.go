@@ -87,17 +87,14 @@ func TestPipelineRunWithRetry(t *testing.T) {
 
 			td := tdd
 			t.Parallel()
-			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
-			// this means that metrics emitted from these tests will have the wrong test name attached. We should
-			// revisit this if we ever start using those metrics (maybe use a different metrics gatherer).
-			logger := getContextLogger(t.Name())
-			logger.Info("Starting test ", td.name)
-			c, namespace := setup(t, logger)
 
-			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-			defer tearDown(t, logger, c, namespace)
+			t.Logf("Starting test ", td.name)
+			c, namespace := setup(t)
 
-			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+			defer tearDown(t, c, namespace)
+
+			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			td.testSetup(t, c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", pipelineRunName, i)
@@ -106,7 +103,7 @@ func TestPipelineRunWithRetry(t *testing.T) {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
 
-			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, PipelineRunFinished(), "PipelineRunSuccess"); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
