@@ -88,7 +88,7 @@ func TestPipelineRunWithRetry(t *testing.T) {
 			td := tdd
 			t.Parallel()
 
-			t.Logf("Starting test ", td.name)
+			t.Logf("Starting test %q", td.name)
 			c, namespace := setup(t)
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
