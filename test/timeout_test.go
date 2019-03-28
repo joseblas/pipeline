@@ -235,7 +235,7 @@ func TestTaskRunTimeoutAndRetry(t *testing.T) {
 	}
 	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace,
 		tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
-			tb.TaskRunTimeout(10*time.Second), tb.TaskRunRetries(1)))); err != nil {
+			tb.TaskRunTimeout(10*time.Second)))); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
 	}
 

@@ -225,7 +225,6 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		tb.TaskTrigger("mytrigger", v1alpha1.TaskTriggerTypeManual),
 		tb.TaskRunServiceAccount("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
-		tb.TaskRunRetries(2),
 	))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -245,7 +244,6 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 			},
 			ServiceAccount: "sa",
 			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},
-			Retries:        2,
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

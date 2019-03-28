@@ -62,6 +62,21 @@ type ResolvedPipelineRunTask struct {
 // state of the PipelineRun.
 type PipelineRunState []*ResolvedPipelineRunTask
 
+func (state PipelineRunState) IsDone() (isDone bool){
+	isDone = false
+	for _, t := range state {
+		if t.TaskRun == nil {
+			return false
+		}
+		status := t.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		retriesDone := len(t.TaskRun.Status.RetriesStatus)
+		retries := t.PipelineTask.Retries
+		println(status, retries, retriesDone)
+		isDone = isDone && (status.IsTrue() || status.IsFalse() && retriesDone > retries)
+		}
+	return
+}
+
 // GetNextTasks will return the next ResolvedPipelineRunTasks to execute, which are the ones in the
 // list of candidateTasks which aren't yet indicated in state to be running.
 func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.PipelineTask) []*ResolvedPipelineRunTask {
@@ -70,8 +85,29 @@ func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.Pi
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
 			tasks = append(tasks, t)
 		}
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
+			if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries{
+				addRetryHistoryAndReschedule(t)
+				tasks = append(tasks, t)
+			}
+		}
 	}
 	return tasks
+}
+
+func addRetryHistoryAndReschedule(task *ResolvedPipelineRunTask) {
+		newStatus := * task.TaskRun.Status.DeepCopy()
+		newStatus.RetriesStatus = nil
+		task.TaskRun.Status.RetriesStatus = append(task.TaskRun.Status.RetriesStatus, newStatus)
+		task.TaskRun.Status.StartTime = nil
+		task.TaskRun.Status.CompletionTime = nil
+		task.TaskRun.Status.Results = nil
+
+		task.TaskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
+
 }
 
 // SuccessfulPipelineTaskNames returns a list of the names of all of the PipelineTasks in state

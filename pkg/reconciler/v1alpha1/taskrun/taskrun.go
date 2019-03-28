@@ -328,44 +328,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
-	if after != nil && after.IsFalse() {
-		// if Retry happens, don't do anything else
-		taskRunStatus := tr.Status.DeepCopy()
-		taskRunStatus.Conditions = tr.Status.Conditions
-		retryIfNeeded(tr, taskRunStatus, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete, c.Logger)
-	}
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
 
 	return nil
-}
-
-func retryIfNeeded(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus, dp DeletePod, logger *zap.SugaredLogger) (err error) {
-
-	if len(tr.Status.RetriesStatus) < tr.Spec.Retries {
-		tr.Status.StartTime = nil
-		tr.Status.CompletionTime = nil
-		tr.Status.Steps = nil
-		tr.Status.Results = nil
-
-		status.RetriesStatus = nil
-		tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, *status)
-		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})
-
-		if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-			logger.Errorf("Failed to terminate pod: %v", err)
-		}
-
-		tr.Status.PodName = ""
-
-		return
-	}
-	tr.Status = *status
-	return
 }
 
 func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
@@ -643,7 +610,7 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
 
-			return true, retryIfNeeded(tr, status, dp, c.Logger)
+			return true, nil
 		}
 	}
 	return false, nil

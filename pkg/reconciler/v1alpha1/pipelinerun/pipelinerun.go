@@ -174,11 +174,12 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	c.timeoutHandler.StatusUnlock(original)
 
-	if pr.IsDone() {
-		c.timeoutHandler.Release(pr)
-		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
-		return nil
-	}
+
+	//if pr.IsDone() {
+	//	c.timeoutHandler.Release(pr)
+	//	c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
+	//	return nil
+	//}
 
 	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
@@ -309,6 +310,13 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return nil
 	}
+
+	if pipelineState.IsDone() {
+			c.timeoutHandler.Release(pr)
+			c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
+			return nil
+	}
+
 	if err := resources.ValidateFrom(pipelineState); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -373,8 +381,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	pr.Status.SetCondition(after)
 	c.timeoutHandler.StatusUnlock(pr)
-
-	retryIfNeeded(pr, after)
+	for _, t := range p.Spec.Tasks{
+		println(t.Name, t.Retries, pr.Name)
+	}
+	//retryIfNeeded(pr, after)
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
@@ -384,22 +394,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	return nil
 }
 
-func retryIfNeeded(pr *v1alpha1.PipelineRun, after *duckv1alpha1.Condition) {
-	if len(pr.Status.RetriesStatus) < pr.Spec.Retries && after != nil && after.IsFalse() {
-		newStatus := *pr.Status.DeepCopy()
-		newStatus.RetriesStatus = nil
-		pr.Status.RetriesStatus = append(pr.Status.RetriesStatus, newStatus)
-		pr.Status.StartTime = nil
-		pr.Status.CompletionTime = nil
-		pr.Status.Results = nil
-		pr.Status.TaskRuns = make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})
-	}
-}
 
 func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask) {
 	for _, rprt := range pipelineState {
@@ -417,6 +412,8 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 }
 
 func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
+	//retries := rprt.PipelineTask.Retries
+
 	var taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
 	if pr.Spec.Timeout != nil {
 		pTimeoutTime := pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)
@@ -441,7 +438,16 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 	}
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
 
-	tr := &v1alpha1.TaskRun{
+	tr, _ := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Get(rprt.TaskRunName, metav1.GetOptions{})
+	if tr != nil {
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
+		return tr, nil
+	}
+
+	tr = &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
@@ -459,7 +465,9 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			Timeout:        taskRunTimeout,
 			NodeSelector:   pr.Spec.NodeSelector,
 			Affinity:       pr.Spec.Affinity,
-		}}
+		},
+	}
+
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 

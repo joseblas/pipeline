@@ -49,6 +49,10 @@ var pts = []v1alpha1.PipelineTask{{
 }, {
 	Name:    "mytask3",
 	TaskRef: v1alpha1.TaskRef{Name: "clustertask"},
+}, {
+	Name:    "mytask4",
+	TaskRef: v1alpha1.TaskRef{Name: "task"},
+	Retries: 1,
 }}
 
 var p = &v1alpha1.Pipeline{
@@ -113,6 +117,17 @@ func makeFailed(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
 	newTr := newTaskRun(tr)
 	newTr.Status.Conditions[0].Status = corev1.ConditionFalse
 	return newTr
+}
+
+func makeRetried(tr v1alpha1.TaskRun) (newTr *v1alpha1.TaskRun) {
+	newTr = newTaskRun(tr)
+	newTr.Status.RetriesStatus = []v1alpha1.TaskRunStatus{{
+		Conditions: []duckv1alpha1.Condition{{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}},
+	}}
+	return
 }
 
 func newTaskRun(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
@@ -201,6 +216,37 @@ var allFinishedState = PipelineRunState{{
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var oneTaskFailedToRetry = PipelineRunState{{
+	PipelineTask: &pts[3],
+	TaskRunName:  "pipelinerun-mytask-failed",
+	TaskRun:      makeFailed(trs[0]),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[0],
+	TaskRunName:  "pipelinerun-mytask1",
+	TaskRun:      nil,
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+var oneTaskFailedWithRetry = PipelineRunState{{
+	PipelineTask: &pts[3],
+	TaskRunName:  "pipelinerun-mytask-failed",
+	TaskRun:      makeRetried(*makeFailed(trs[0])),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[0],
+	TaskRunName:  "pipelinerun-mytask1",
+	TaskRun:      nil,
 	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
