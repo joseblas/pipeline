@@ -123,13 +123,6 @@ func TestPipelineRunWithRetry(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Couldn't get expected PipelineRun for %s: %s", prName, err)
 				}
-
-				if pr != nil {
-					fmt.Println(" retries  ", len(pr.Status.RetriesStatus))
-				}
-				//if pr.Spec.Retries != len(pr.Status.RetriesStatus) {
-				//	t.Fatal("Unexpected number of retries:  ", pr.Spec.Retries, "expected: ", len(pr.Status.RetriesStatus))
-				//}
 			}
 		})
 	}
