@@ -590,7 +590,6 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		timeout := tr.Spec.Timeout.Duration
 		runtime := time.Since(tr.Status.StartTime.Time)
 		if runtime > timeout {
-			status := tr.Status.DeepCopy()
 
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
 			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
@@ -599,7 +598,7 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 			}
 
 			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
-			status.SetCondition(&duckv1alpha1.Condition{
+			tr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  reasonTimedOut,

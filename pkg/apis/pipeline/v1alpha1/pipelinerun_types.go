@@ -128,7 +128,7 @@ type PipelineRunStatus struct {
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
 	// Failed Status History
 	// +optional
-	RetriesStatus []PipelineRunStatus `json:"retriesStatus,omitempty"`
+	//RetriesStatus []PipelineRunStatus `json:"retriesStatus,omitempty"`
 }
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status

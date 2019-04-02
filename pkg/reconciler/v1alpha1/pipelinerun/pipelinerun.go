@@ -28,7 +28,7 @@ import (
 	"github.com/knative/pkg/tracker"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -274,6 +274,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.taskLister.Tasks(pr.Namespace).Get(name)
 		},
+		func(name string) (*v1alpha1.TaskRun, error) {
+			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+		},
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.clusterTaskLister.Get(name)
 		},
@@ -384,7 +387,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	for _, t := range p.Spec.Tasks{
 		println(t.Name, t.Retries, pr.Name)
 	}
-	//retryIfNeeded(pr, after)
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
@@ -412,7 +414,6 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 }
 
 func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
-	//retries := rprt.PipelineTask.Retries
 
 	var taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
 	if pr.Spec.Timeout != nil {
@@ -438,8 +439,10 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 	}
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
 
-	tr, _ := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Get(rprt.TaskRunName, metav1.GetOptions{})
+	tr, _  :=  c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
 	if tr != nil {
+		//is a retry
+		addRetryHistory(tr)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
@@ -473,6 +476,18 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 
 	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
 }
+
+func addRetryHistory(task *v1alpha1.TaskRun) {
+	newStatus := * task.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	task.Status.RetriesStatus = append(task.Status.RetriesStatus, newStatus)
+	task.Status.StartTime = nil
+	task.Status.CompletionTime = nil
+	task.Status.Results = nil
+	task.Status.PodName = ""
+
+}
+
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)

@@ -595,10 +595,11 @@ func TestResolvePipelineRun(t *testing.T) {
 	// The Task "task" doesn't actually take any inputs or outputs, but validating
 	// that is not done as part of Run resolution
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
 
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, p.Spec.Tasks, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun,  getClusterTask, getResource, p.Spec.Tasks, providedResources)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
@@ -659,6 +660,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	providedResources := map[string]v1alpha1.PipelineResourceRef{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
 	pr := v1alpha1.PipelineRun{
@@ -666,7 +668,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 			Name: "pipelinerun",
 		},
 	}
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, pts, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, pts, providedResources)
 	if err != nil {
 		t.Fatalf("Did not expect error when resolving PipelineRun without Resources: %v", err)
 	}
@@ -701,13 +703,17 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("clustertask"), name)
 	}
+
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
+		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
+	}
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
 		},
 	}
-	_, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, pts, providedResources)
+	_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, pts, providedResources)
 	switch err := err.(type) {
 	case nil:
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
@@ -743,6 +749,7 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 	providedResources := map[string]v1alpha1.PipelineResourceRef{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("shouldnt be called") }
 
@@ -753,7 +760,7 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 					Name: "pipelinerun",
 				},
 			}
-			_, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
+			_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
 			if err == nil {
 				t.Fatalf("Expected error when bindings are in incorrect state for Pipeline %s but got none", p.Name)
 			}
@@ -790,6 +797,7 @@ func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
 	}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("pipelineresource"), name)
@@ -802,7 +810,7 @@ func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
 					Name: "pipelinerun",
 				},
 			}
-			_, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
+			_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
 			switch err := err.(type) {
 			case nil:
 				t.Fatalf("Expected error getting non-existent Resources for Pipeline %s but got none", p.Name)
@@ -1118,9 +1126,10 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	// that is not done as part of Run resolution
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
 
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, p.Spec.Tasks, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, p.Spec.Tasks, providedResources)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}

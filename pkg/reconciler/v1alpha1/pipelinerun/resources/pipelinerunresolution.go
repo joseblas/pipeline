@@ -79,35 +79,19 @@ func (state PipelineRunState) IsDone() (isDone bool){
 
 // GetNextTasks will return the next ResolvedPipelineRunTasks to execute, which are the ones in the
 // list of candidateTasks which aren't yet indicated in state to be running.
-func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.PipelineTask) []*ResolvedPipelineRunTask {
+func (state *PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.PipelineTask) []*ResolvedPipelineRunTask {
 	tasks := []*ResolvedPipelineRunTask{}
-	for _, t := range state {
+	for _, t := range *state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
 			tasks = append(tasks, t)
 		}
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
 			if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries{
-				addRetryHistoryAndReschedule(t)
 				tasks = append(tasks, t)
 			}
 		}
 	}
 	return tasks
-}
-
-func addRetryHistoryAndReschedule(task *ResolvedPipelineRunTask) {
-		newStatus := * task.TaskRun.Status.DeepCopy()
-		newStatus.RetriesStatus = nil
-		task.TaskRun.Status.RetriesStatus = append(task.TaskRun.Status.RetriesStatus, newStatus)
-		task.TaskRun.Status.StartTime = nil
-		task.TaskRun.Status.CompletionTime = nil
-		task.TaskRun.Status.Results = nil
-
-		task.TaskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})
-
 }
 
 // SuccessfulPipelineTaskNames returns a list of the names of all of the PipelineTasks in state
@@ -207,6 +191,7 @@ func (e *ResourceNotFoundError) Error() string {
 func ResolvePipelineRun(
 	pipelineRun v1alpha1.PipelineRun,
 	getTask resources.GetTask,
+	getTaskRun resources.GetTaskRun,
 	getClusterTask resources.GetClusterTask,
 	getResource resources.GetResource,
 	tasks []v1alpha1.PipelineTask,
@@ -250,6 +235,15 @@ func ResolvePipelineRun(
 		}
 		rprt.ResolvedTaskResources = rtr
 
+		// not needed indeed
+		//f := pipelineRun.Status.TaskRuns[rprt.TaskRunName]
+		//if f!= nil {
+		//
+		//}
+		taskRun, err := getTaskRun(rprt.TaskRunName)
+		if taskRun != nil {
+			rprt.TaskRun = taskRun
+		}
 		// Add this task to the state of the PipelineRun
 		state = append(state, &rprt)
 	}
