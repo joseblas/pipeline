@@ -174,7 +174,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	c.timeoutHandler.StatusUnlock(original)
 
-
+	println( " is done ", pr.IsDone())
 	//if pr.IsDone() {
 	//	c.timeoutHandler.Release(pr)
 	//	c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")

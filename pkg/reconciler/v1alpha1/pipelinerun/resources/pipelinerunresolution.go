@@ -63,7 +63,7 @@ type ResolvedPipelineRunTask struct {
 type PipelineRunState []*ResolvedPipelineRunTask
 
 func (state PipelineRunState) IsDone() (isDone bool){
-	isDone = false
+	isDone = true
 	for _, t := range state {
 		if t.TaskRun == nil {
 			return false
@@ -73,7 +73,10 @@ func (state PipelineRunState) IsDone() (isDone bool){
 		retries := t.PipelineTask.Retries
 		println(status, retries, retriesDone)
 		isDone = isDone && (status.IsTrue() || status.IsFalse() && retriesDone > retries)
+		if !isDone {
+			return
 		}
+	}
 	return
 }
 

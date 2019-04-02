@@ -458,13 +458,37 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		})),
 	)}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
-		tb.PipelineTask("hello-world-1", "hellow-world")))}
+		tb.PipelineTask("hello-world-1", "hello-world")))}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("hello-world-1", "foo",
+			tb.TaskRunStatus(
+				tb.PodName("my-pod-name"),
+				tb.Condition(duckv1alpha1.Condition{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+			)),
+	}
+
+
+	prs[0].Status.TaskRuns = make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	prs[0].Status.TaskRuns["hello-world-1"] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "hello-world-1",
+		Status:           &trs[0].Status,
+	}
+
+
+
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
+		TaskRuns: 	  trs,
 	}
+// add taskRun as yesterday!!!!
+
 
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(1)
@@ -478,8 +502,14 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// make sure there is no failed events
 	validateEvents(t, fr)
 
-	if len(clients.Pipeline.Actions()) != 0 {
-		t.Fatalf("Expected client to not have created a TaskRun for the completed PipelineRun, but it did")
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		if action != nil {
+			resource := action.GetResource().Resource
+			if resource != "pipelineruns" {
+				t.Fatalf("Expected client to not have created a TaskRun for the completed PipelineRun, but it did")
+			}
+		}
 	}
 
 	// Check that the PipelineRun was reconciled correctly
