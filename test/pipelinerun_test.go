@@ -119,10 +119,10 @@ func TestPipelineRunWithRetry(t *testing.T) {
 					}
 				}
 
-				pr, err := c.PipelineRunClient.Get(prName, metav1.GetOptions{})
-				if err != nil {
-					t.Fatalf("Couldn't get expected PipelineRun for %s: %s", prName, err)
-				}
+				//pr, err := c.PipelineRunClient.Get(prName, metav1.GetOptions{})
+				//if err != nil {
+				//	t.Fatalf("Couldn't get expected PipelineRun for %s: %s", prName, err)
+				//}
 			}
 		})
 	}
