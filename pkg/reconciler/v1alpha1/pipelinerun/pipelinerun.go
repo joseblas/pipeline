@@ -382,11 +382,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	c.timeoutHandler.StatusLock(pr)
 	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
 
+	c.Logger.Infof("Setting new status %s, %s", after.Status, after.Reason)
 	pr.Status.SetCondition(after)
 	c.timeoutHandler.StatusUnlock(pr)
-	for _, t := range p.Spec.Tasks{
-		println(t.Name, t.Retries, pr.Name)
-	}
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 

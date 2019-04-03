@@ -315,6 +315,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	c.timeoutHandler.StatusLock(tr)
 	updateStatusFromPod(tr, pod)
+
+	c.Logger.Infof(" Pod %s, %s  get ", pod.Name, pod.Namespace )
 	c.timeoutHandler.StatusUnlock(tr)
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)

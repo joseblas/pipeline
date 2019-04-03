@@ -40,7 +40,7 @@ import (
 //                        pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
 	c, namespace := setup(t)
-	t.Parallel()
+	//t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
@@ -107,8 +107,8 @@ func TestDAGPipelineRun(t *testing.T) {
 	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
-	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
+	t.Logf("Waiting for DAG pipeline to complete, timeout %s: ", pipelineRunTimeout)
+	if err := WaitForPipelineRunState(c, "dag-pipeline-run", 2 * pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 

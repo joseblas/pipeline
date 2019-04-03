@@ -317,7 +317,7 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 		logger.Infof("TaskRun %s status : %v", rprt.TaskRunName, c.Status)
 		// If any TaskRuns have failed, we should halt execution and consider the run failed
 		if c.Status == corev1.ConditionFalse {
-			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", rprt.TaskRunName, prName)
+			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed. Reason: %s", rprt.TaskRunName, prName, c.Reason)
 			return &duckv1alpha1.Condition{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
