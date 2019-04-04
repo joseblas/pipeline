@@ -40,7 +40,7 @@ import (
 //                        pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
 	c, namespace := setup(t)
-	//t.Parallel()
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)

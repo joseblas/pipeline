@@ -314,6 +314,7 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 			allFinished = false
 			continue
 		}
+		logger.Infof("Reconcile time: %v", time.Now())
 		logger.Infof("TaskRun %s status : %v", rprt.TaskRunName, c.Status)
 		// If any TaskRuns have failed, we should halt execution and consider the run failed
 		if c.Status == corev1.ConditionFalse {

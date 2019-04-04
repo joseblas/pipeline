@@ -314,7 +314,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
-	if pipelineState.IsDone() {
+	c.Logger.Infof("Pr is done> ", pr.IsDone())
+	c.Logger.Infof("Ps is done> ", pipelineState.IsDone())
+	if pipelineState.IsDone() && pr.IsDone() {
 			c.timeoutHandler.Release(pr)
 			c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
 			return nil
