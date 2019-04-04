@@ -112,6 +112,7 @@ func TestPipelineRunWithRetry(t *testing.T) {
 
 				list, _ := c.PipelineClient.List(metav1.ListOptions{})
 
+				println(" Fix this test ot remove it ")
 				for _, item := range list.Items {
 					println(" Item ", item.Name)
 					for _, task := range item.Spec.Tasks{

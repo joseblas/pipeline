@@ -183,10 +183,10 @@ func TestPipelineRunTimeout(t *testing.T) {
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
 	c, namespace := setup(t)
-	t.Parallel()
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
-	defer tearDown(t, c, namespace)
+	//t.Parallel()
+	//
+	//knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	//defer tearDown(t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
@@ -205,18 +205,22 @@ func TestTaskRunTimeout(t *testing.T) {
 		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if cond != nil {
 			if cond.Status == corev1.ConditionFalse {
+				println(" cond F ", cond.Reason)
 				if cond.Reason == "TaskRunTimeout" {
 					return true, nil
 				}
 				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", "run-giraffe", cond.Reason)
 			} else if cond.Status == corev1.ConditionTrue {
+				println(" cond true ", cond.Reason)
 				return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", "run-giraffe")
 			}
 		}
-
+		println(" Cont... ")
 		return false, nil
 	}, "TaskRunTimeout"); err != nil {
+		println("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
 	}
+	println("TestTaskRunTimeout end" )
 }
 
